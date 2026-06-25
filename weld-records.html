@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<title>Weld Records</title>
+<style>
+  :root {
+    --navy:   #1a1a2e;
+    --steel:  #2d3561;
+    --arc:    #e94560;
+    --spark:  #f5a623;
+    --light:  #f0f2f5;
+    --white:  #ffffff;
+    --mid:    #8892a4;
+    --card:   #ffffff;
+    --border: #dde1e9;
+    --success:#27ae60;
+    --radius: 10px;
+    --font:   'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font);
+    background: var(--light);
+    color: var(--navy);
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+
+  /* ── PIN SCREEN ── */
+  #pin-screen {
+    position: fixed; inset: 0;
+    background: var(--navy);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 1000; gap: 0;
+  }
+  .pin-logo {
+    font-size: 13px; font-weight: 700; letter-spacing: 4px;
+    color: var(--mid); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .pin-title {
+    font-size: 28px; font-weight: 800; color: var(--white);
+    margin-bottom: 4px; letter-spacing: -0.5px;
+  }
+  .pin-sub {
+    font-size: 13px; color: var(--mid); margin-bottom: 40px;
+  }
+  .pin-dots {
+    display: flex; gap: 14px; margin-bottom: 36px;
+  }
+  .pin-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--steel);
+    background: transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .pin-dot.filled { background: var(--arc); border-color: var(--arc); }
+  .pin-dot.error  { background: #e74c3c; border-color: #e74c3c; }
+  .pin-pad {
+    display: grid; grid-template-columns: repeat(3, 72px);
+    gap: 12px;
+  }
+  .pin-btn {
+    height: 72px; border-radius: var(--radius);
+    border: none; background: var(--steel);
+    color: var(--white); font-size: 24px; font-weight: 600;
+    cursor: pointer; transition: background 0.1s, transform 0.1s;
+    font-family: var(--font);
+  }
+  .pin-btn:active { background: var(--arc); transform: scale(0.94); }
+  .pin-btn.del { font-size: 18px; background: #252a4a; }
+  .pin-btn.empty { visibility: hidden; }
+  .pin-error {
+    margin-top: 20px; color: var(--arc);
+    font-size: 13px; font-weight: 600; min-height: 18px;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--navy);
+    padding: 14px 16px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+  .app-header h1 {
+    font-size: 18px; font-weight: 800; color: var(--white);
+    letter-spacing: -0.3px;
+  }
+  .app-header h1 span { color: var(--arc); }
+  .header-btn {
+    width: 40px; height: 40px; border-radius: 8px;
+    border: none; background: var(--steel);
+    color: var(--white); font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .header-btn:active { background: var(--arc); }
+
+  /* ── NAV TABS ── */
+  .nav-tabs {
+    display: flex; background: var(--navy);
+    padding: 0 16px 12px; gap: 8px;
+  }
+  .nav-tab {
+    flex: 1; padding: 9px 4px; border-radius: 8px;
+    border: none; background: var(--steel);
+    color: var(--mid); font-size: 11px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.5px; text-transform: uppercase;
+    transition: all 0.15s; font-family: var(--font);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .nav-tab .tab-icon { font-size: 18px; }
+  .nav-tab.active { background: var(--arc); color: var(--white); }
+  .nav-tab:active { opacity: 0.8; }
+
+  /* ── VIEWS ── */
+  .view { display: none; padding: 16px; padding-bottom: 24px; }
+  .view.active { display: block; }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap {
+    position: relative; margin-bottom: 16px;
+  }
+  .search-input {
+    width: 100%; padding: 13px 16px 13px 44px;
+    border: 2px solid var(--border); border-radius: var(--radius);
+    font-size: 15px; background: var(--white);
+    font-family: var(--font); color: var(--navy);
+    outline: none; transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--arc); }
+  .search-icon {
+    position: absolute; left: 14px; top: 50%;
+    transform: translateY(-50%); font-size: 18px; color: var(--mid);
+    pointer-events: none;
+  }
+
+  /* ── FILTER ROW ── */
+  .filter-row {
+    display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto;
+    padding-bottom: 4px; scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 20px;
+    border: 2px solid var(--border); background: var(--white);
+    font-size: 12px; font-weight: 600; color: var(--mid);
+    cursor: pointer; white-space: nowrap; font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .filter-chip.active { border-color: var(--arc); background: var(--arc); color: var(--white); }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 11px; font-weight: 700; color: var(--mid);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 10px; margin-top: 4px;
+  }
+
+  /* ── PHOTO GRID ── */
+  .photo-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .photo-card {
+    border-radius: var(--radius); overflow: hidden;
+    background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    border: 2px solid transparent;
+  }
+  .photo-card:active { transform: scale(0.97); box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+  .photo-card img {
+    width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;
+  }
+  .photo-card-body { padding: 8px 10px 10px; }
+  .photo-card-name {
+    font-size: 13px; font-weight: 700; color: var(--navy);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .photo-card-meta {
+    font-size: 11px; color: var(--mid); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .photo-card-tag {
+    display: inline-block; margin-top: 5px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    background: var(--light); color: var(--steel);
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center; padding: 48px 24px; color: var(--mid);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .empty-sub { font-size: 14px; line-height: 1.5; }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed; bottom: 24px; right: 20px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--arc); border: none;
+    color: var(--white); font-size: 28px;
+    box-shadow: 0 4px 16px rgba(233,69,96,0.45);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    z-index: 50;
+  }
+  .fab:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(233,69,96,0.35); }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
+    z-index: 200; display: none; align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    width: 100%; background: var(--white);
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 16px);
+    max-height: 92vh; overflow-y: auto;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-handle {
+    width: 40px; height: 4px; border-radius: 2px;
+    background: var(--border); margin: 12px auto 0;
+  }
+  .modal-header {
+    padding: 16px 20px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-size: 18px; font-weight: 800; color: var(--navy); }
+  .modal-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: var(--light);
+    font-size: 16px; cursor: pointer; color: var(--mid);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-body { padding: 20px; }
+
+  /* ── FORM ELEMENTS ── */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--mid); letter-spacing: 0.5px; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 13px 14px;
+    border: 2px solid var(--border); border-radius: var(--radius);
+    font-size: 15px; font-family: var(--font); color: var(--navy);
+    background: var(--white); outline: none;
+    transition: border-color 0.15s; appearance: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--arc);
+  }
+  .form-textarea { min-height: 80px; resize: vertical; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  /* ── PHOTO PICKER ── */
+  .photo-picker {
+    width: 100%; aspect-ratio: 4/3; border-radius: var(--radius);
+    border: 2px dashed var(--border); background: var(--light);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; transition: border-color 0.15s;
+    overflow: hidden; position: relative; margin-bottom: 16px;
+  }
+  .photo-picker:active { border-color: var(--arc); }
+  .photo-picker img {
+    width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;
+  }
+  .photo-picker-label {
+    font-size: 13px; color: var(--mid); font-weight: 600;
+    text-align: center; padding: 16px; pointer-events: none;
+    position: relative; z-index: 1;
+  }
+  .photo-picker-icon { font-size: 36px; margin-bottom: 8px; }
+  #photo-file-input { display: none; }
+
+  .photo-source-btns {
+    display: flex; gap: 10px; margin-bottom: 16px;
+  }
+  .photo-source-btn {
+    flex: 1; padding: 12px 8px; border-radius: var(--radius);
+    border: 2px solid var(--border); background: var(--white);
+    font-size: 13px; font-weight: 700; color: var(--navy);
+    cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; gap: 4px; font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .photo-source-btn span { font-size: 22px; }
+  .photo-source-btn.selected { border-color: var(--arc); background: #fff0f3; color: var(--arc); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: block; width: 100%; padding: 15px;
+    border-radius: var(--radius); border: none;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    font-family: var(--font); transition: opacity 0.15s, transform 0.1s;
+    text-align: center;
+  }
+  .btn:active { opacity: 0.85; transform: scale(0.98); }
+  .btn-primary { background: var(--arc); color: var(--white); }
+  .btn-secondary { background: var(--light); color: var(--navy); }
+  .btn-danger { background: #fdecea; color: #c0392b; }
+  .btn + .btn { margin-top: 10px; }
+
+  /* ── ROSTER LIST ── */
+  .class-card {
+    background: var(--card); border-radius: var(--radius);
+    border: 2px solid var(--border); margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .class-card-header {
+    padding: 14px 16px; display: flex;
+    align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .class-card-title { font-size: 15px; font-weight: 800; color: var(--navy); }
+  .class-card-meta { font-size: 12px; color: var(--mid); margin-top: 2px; }
+  .class-badge {
+    padding: 4px 10px; border-radius: 6px;
+    background: var(--arc); color: var(--white);
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .class-card-body {
+    border-top: 1px solid var(--border); padding: 12px 16px;
+    display: none;
+  }
+  .class-card-body.open { display: block; }
+  .student-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .student-row:last-child { border-bottom: none; }
+  .student-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .student-count { font-size: 11px; color: var(--mid); }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: none; background: var(--light);
+    font-size: 15px; cursor: pointer; color: var(--mid);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .icon-btn:active { background: #fdecea; color: #c0392b; }
+  .class-actions {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+  .class-actions .btn { font-size: 13px; padding: 10px 12px; }
+
+  /* ── PHOTO DETAIL MODAL ── */
+  .detail-img {
+    width: 100%; max-height: 55vw; object-fit: contain;
+    background: var(--navy); display: block;
+  }
+  .detail-body { padding: 20px; }
+  .detail-name { font-size: 22px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+  .detail-meta { font-size: 14px; color: var(--mid); margin-bottom: 16px; }
+  .detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .detail-tag {
+    padding: 5px 12px; border-radius: 6px;
+    background: var(--light); color: var(--steel);
+    font-size: 12px; font-weight: 700;
+  }
+  .detail-notes {
+    font-size: 14px; color: var(--navy); line-height: 1.6;
+    padding: 12px; background: var(--light); border-radius: 8px;
+    margin-bottom: 16px;
+  }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card); border-radius: var(--radius);
+    border: 2px solid var(--border); padding: 16px;
+    text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 800; color: var(--arc); }
+  .stat-label { font-size: 11px; font-weight: 700; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+    background: var(--navy); color: var(--white);
+    padding: 12px 20px; border-radius: 24px;
+    font-size: 14px; font-weight: 600; z-index: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    opacity: 0; transition: opacity 0.2s;
+    white-space: nowrap; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── SYNC BANNER ── */
+  .sync-banner {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white; padding: 12px 16px;
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── SEMESTER CHIPS ── */
+  .sem-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; margin-bottom: 8px;
+  }
+  .sem-chip {
+    padding: 10px 4px; border-radius: 8px;
+    border: 2px solid var(--border); background: var(--white);
+    font-size: 13px; font-weight: 700; color: var(--navy);
+    cursor: pointer; text-align: center; font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .sem-chip.selected { border-color: var(--arc); background: var(--arc); color: white; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div class="pin-logo">Antelope Valley College</div>
+  <div class="pin-title">Weld Records</div>
+  <div class="pin-sub">CTE Welding Department</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn empty"></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+
+  <div class="sync-banner">
+    ☁️ Google Drive sync not yet connected — records saved locally
+  </div>
+
+  <div class="app-header">
+    <h1>Weld<span>Records</span></h1>
+    <button class="header-btn" onclick="openSearch()" title="Search">🔍</button>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('photos')" id="tab-photos">
+      <span class="tab-icon">📷</span>Photos
+    </button>
+    <button class="nav-tab" onclick="switchTab('classes')" id="tab-classes">
+      <span class="tab-icon">📚</span>Classes
+    </button>
+    <button class="nav-tab" onclick="switchTab('search')" id="tab-search">
+      <span class="tab-icon">🔍</span>Search
+    </button>
+    <button class="nav-tab" onclick="switchTab('stats')" id="tab-stats">
+      <span class="tab-icon">📊</span>Stats
+    </button>
+  </div>
+
+  <!-- PHOTOS VIEW -->
+  <div class="view active" id="view-photos">
+    <div class="filter-row" id="photos-filter-row">
+      <button class="filter-chip active" data-filter="all" onclick="filterPhotos(this,'all')">All</button>
+    </div>
+    <div class="photo-grid" id="photo-grid"></div>
+    <div class="empty-state" id="photos-empty" style="display:none">
+      <div class="empty-icon">📸</div>
+      <div class="empty-title">No photos yet</div>
+      <div class="empty-sub">Tap the + button to add your first project photo</div>
+    </div>
+  </div>
+
+  <!-- CLASSES VIEW -->
+  <div class="view" id="view-classes">
+    <div class="section-label">Your Classes</div>
+    <div id="class-list"></div>
+    <div class="empty-state" id="classes-empty" style="display:none">
+      <div class="empty-icon">📚</div>
+      <div class="empty-title">No classes yet</div>
+      <div class="empty-sub">Tap + to add your first class and roster</div>
+    </div>
+  </div>
+
+  <!-- SEARCH VIEW -->
+  <div class="view" id="view-search">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search-input" type="search"
+        placeholder="Student name, class, semester…"
+        oninput="runSearch()" autocomplete="off">
+    </div>
+    <div class="filter-row">
+      <button class="filter-chip active" data-sf="all" onclick="setSearchFilter(this,'all')">All</button>
+      <button class="filter-chip" data-sf="WELD 101" onclick="setSearchFilter(this,'WELD 101')">WELD 101</button>
+      <button class="filter-chip" data-sf="WELD 110" onclick="setSearchFilter(this,'WELD 110')">WELD 110</button>
+      <button class="filter-chip" data-sf="WELD 212" onclick="setSearchFilter(this,'WELD 212')">WELD 212</button>
+      <button class="filter-chip" data-sf="WELD 260" onclick="setSearchFilter(this,'WELD 260')">WELD 260</button>
+      <button class="filter-chip" data-sf="WELD 900" onclick="setSearchFilter(this,'WELD 900')">WELD 900</button>
+      <button class="filter-chip" data-sf="WELD 901" onclick="setSearchFilter(this,'WELD 901')">WELD 901</button>
+    </div>
+    <div class="section-label" id="search-results-label">Enter a name or keyword to search</div>
+    <div class="photo-grid" id="search-grid"></div>
+  </div>
+
+  <!-- STATS VIEW -->
+  <div class="view" id="view-stats">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-photos">0</div>
+        <div class="stat-label">Total Photos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-students">0</div>
+        <div class="stat-label">Students</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-classes">0</div>
+        <div class="stat-label">Classes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-semesters">0</div>
+        <div class="stat-label">Semesters</div>
+      </div>
+    </div>
+    <div class="section-label">Recent Activity</div>
+    <div id="recent-list"></div>
+    <div style="margin-top:24px">
+      <button class="btn btn-secondary" onclick="exportData()">📤 Export All Data (JSON)</button>
+      <button class="btn btn-danger" style="margin-top:10px" onclick="confirmReset()">🗑️ Reset All Data</button>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" onclick="openAddPhoto()">+</button>
+</div>
+
+<!-- ADD PHOTO MODAL -->
+<div class="modal-overlay" id="modal-add-photo">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Add Photo</div>
+      <button class="modal-close" onclick="closeModal('modal-add-photo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="photo-source-btns">
+        <button class="photo-source-btn selected" id="src-camera" onclick="selectSource('camera')">
+          <span>📷</span>Camera
+        </button>
+        <button class="photo-source-btn" id="src-gallery" onclick="selectSource('gallery')">
+          <span>🖼️</span>Gallery
+        </button>
+      </div>
+      <div class="photo-picker" id="photo-picker" onclick="triggerFilePick()">
+        <div class="photo-picker-label">
+          <div class="photo-picker-icon">📷</div>
+          Tap to take photo
+        </div>
+        <img id="photo-preview" src="" style="display:none">
+      </div>
+      <input type="file" id="photo-file-input" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)">
+
+      <div class="form-group">
+        <label class="form-label">Student Name *</label>
+        <input class="form-input" id="add-student" type="text" placeholder="First Last" list="student-suggestions" autocomplete="off">
+        <datalist id="student-suggestions"></datalist>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Class *</label>
+          <select class="form-select" id="add-class">
+            <option value="">Select…</option>
+            <option>WELD 101</option>
+            <option>WELD 110</option>
+            <option>WELD 212</option>
+            <option>WELD 260</option>
+            <option>WELD 900</option>
+            <option>WELD 901</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Year *</label>
+          <select class="form-select" id="add-year"></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Semester *</label>
+        <div class="sem-grid">
+          <button class="sem-chip selected" data-sem="Fall" onclick="selectSem(this)">Fall</button>
+          <button class="sem-chip" data-sem="Spring" onclick="selectSem(this)">Spring</button>
+          <button class="sem-chip" data-sem="Summer" onclick="selectSem(this)">Summer</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Project / Assignment</label>
+        <input class="form-input" id="add-project" type="text" placeholder="e.g. Fillet Weld Test, Final Plate…">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="add-notes" placeholder="Pass/fail, grade, observations…"></textarea>
+      </div>
+
+      <button class="btn btn-primary" onclick="savePhoto()">Save Photo Record</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-photo')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLASS MODAL -->
+<div class="modal-overlay" id="modal-add-class">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="class-modal-title">Add Class</div>
+      <button class="modal-close" onclick="closeModal('modal-add-class')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Course</label>
+        <select class="form-select" id="class-course">
+          <option>WELD 101</option>
+          <option>WELD 110</option>
+          <option>WELD 212</option>
+          <option>WELD 260</option>
+          <option>WELD 900</option>
+          <option>WELD 901</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Semester</label>
+          <div class="sem-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <button class="sem-chip selected" data-csem="Fall" onclick="selectCSem(this)">Fall</button>
+            <button class="sem-chip" data-csem="Spring" onclick="selectCSem(this)">Spring</button>
+            <button class="sem-chip" data-csem="Summer" onclick="selectCSem(this)">Summer</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Year</label>
+        <select class="form-select" id="class-year"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Section (optional)</label>
+        <input class="form-input" id="class-section" type="text" placeholder="e.g. 01, MW, Evening">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Add Students (one per line or comma-separated)</label>
+        <textarea class="form-textarea" id="class-roster" placeholder="John Smith&#10;Jane Doe&#10;…" style="min-height:120px"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveClass()">Save Class</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-class')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO DETAIL MODAL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Photo Record</div>
+      <button class="modal-close" onclick="closeModal('modal-detail')">✕</button>
+    </div>
+    <img id="detail-img" class="detail-img" src="" alt="Project photo">
+    <div class="detail-body">
+      <div class="detail-name" id="detail-name"></div>
+      <div class="detail-meta" id="detail-meta"></div>
+      <div class="detail-tags" id="detail-tags"></div>
+      <div class="detail-notes" id="detail-notes" style="display:none"></div>
+      <button class="btn btn-danger" id="detail-delete-btn">Delete Record</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+const PIN = '7018';
+let pinBuffer = '';
+let db = loadDB();
+let currentPhotoData = null;
+let photoSource = 'camera';
+let selectedSem = 'Fall';
+let selectedCSem = 'Fall';
+let currentDetailId = null;
+let searchFilter = 'all';
+let editingClassId = null;
+
+function loadDB() {
+  try {
+    return JSON.parse(localStorage.getItem('weldRecordsDB') || '{"photos":[],"classes":[]}');
+  } catch { return { photos: [], classes: [] }; }
+}
+
+function saveDB() {
+  localStorage.setItem('weldRecordsDB', JSON.stringify(db));
+}
+
+// ── PIN ────────────────────────────────────────────────
+function pinPress(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(checkPin, 80);
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots(state) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('d' + i);
+    dot.className = 'pin-dot';
+    if (state === 'error') dot.classList.add('error');
+    else if (i < pinBuffer.length) dot.classList.add('filled');
+  }
+}
+
+function checkPin() {
+  if (pinBuffer === PIN) {
+    document.getElementById('pin-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  } else {
+    updatePinDots('error');
+    document.getElementById('pin-error').textContent = 'Incorrect PIN';
+    setTimeout(() => {
+      pinBuffer = '';
+      updatePinDots();
+      document.getElementById('pin-error').textContent = '';
+    }, 900);
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────
+function initApp() {
+  populateYearSelects();
+  renderPhotos();
+  renderClasses();
+  renderStats();
+  buildPhotoFilters();
+}
+
+function populateYearSelects() {
+  const cur = new Date().getFullYear();
+  ['add-year','class-year'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    for (let y = cur + 1; y >= cur - 3; y--) {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      if (y === cur) o.selected = true;
+      sel.appendChild(o);
+    }
+  });
+}
+
+// ── TABS ───────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('fab').style.display =
+    (tab === 'photos' || tab === 'classes') ? 'flex' : 'none';
+  if (tab === 'stats') renderStats();
+  if (tab === 'classes') {
+    document.getElementById('fab').onclick = openAddClass;
+  } else {
+    document.getElementById('fab').onclick = openAddPhoto;
+  }
+}
+
+function openSearch() { switchTab('search'); document.getElementById('search-input').focus(); }
+
+// ── PHOTO FILTERS ──────────────────────────────────────
+function buildPhotoFilters() {
+  const row = document.getElementById('photos-filter-row');
+  row.innerHTML = '<button class="filter-chip active" data-filter="all" onclick="filterPhotos(this,\'all\')">All</button>';
+  const sems = [...new Set(db.photos.map(p => p.semester + ' ' + p.year))].sort().reverse();
+  sems.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip';
+    btn.dataset.filter = s;
+    btn.textContent = s;
+    btn.onclick = function() { filterPhotos(this, s); };
+    row.appendChild(btn);
+  });
+}
+
+function filterPhotos(btn, filter) {
+  document.querySelectorAll('#photos-filter-row .filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderPhotos(filter);
+}
+
+// ── RENDER PHOTOS ──────────────────────────────────────
+function renderPhotos(filter) {
+  filter = filter || 'all';
+  let photos = [...db.photos].reverse();
+  if (filter !== 'all') {
+    photos = photos.filter(p => (p.semester + ' ' + p.year) === filter);
+  }
+  const grid = document.getElementById('photo-grid');
+  const empty = document.getElementById('photos-empty');
+  grid.innerHTML = '';
+  if (!photos.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  photos.forEach(p => grid.appendChild(makePhotoCard(p)));
+}
+
+function makePhotoCard(p) {
+  const card = document.createElement('div');
+  card.className = 'photo-card';
+  card.innerHTML = `
+    <img src="${p.photo || 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'300\'><rect fill=\'%231a1a2e\' width=\'400\' height=\'300\'><\/rect><text x=\'50%\' y=\'50%\' fill=\'%23e94560\' font-size=\'48\' text-anchor=\'middle\' dominant-baseline=\'middle\'>🔧<\/text><\/svg>'}" alt="${p.student} project photo" loading="lazy">
+    <div class="photo-card-body">
+      <div class="photo-card-name">${p.student}</div>
+      <div class="photo-card-meta">${p.course} · ${p.semester} ${p.year}</div>
+      ${p.project ? `<div class="photo-card-tag">${p.project}</div>` : ''}
+    </div>
+  `;
+  card.onclick = () => openDetail(p.id);
+  return card;
+}
+
+// ── RENDER CLASSES ─────────────────────────────────────
+function renderClasses() {
+  const list = document.getElementById('class-list');
+  const empty = document.getElementById('classes-empty');
+  list.innerHTML = '';
+  if (!db.classes.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  db.classes.forEach(c => {
+    const photoCount = db.photos.filter(p => p.course === c.course && p.semester === c.semester && p.year == c.year).length;
+    const div = document.createElement('div');
+    div.className = 'class-card';
+    div.innerHTML = `
+      <div class="class-card-header" onclick="toggleClass('cc-${c.id}')">
+        <div>
+          <div class="class-card-title">${c.course}${c.section ? ' · ' + c.section : ''}</div>
+          <div class="class-card-meta">${c.semester} ${c.year} · ${c.students.length} students · ${photoCount} photos</div>
+        </div>
+        <div class="class-badge">${c.course.replace('WELD ','')}</div>
+      </div>
+      <div class="class-card-body" id="cc-${c.id}">
+        ${c.students.length ? c.students.map(s => `
+          <div class="student-row">
+            <div>
+              <div class="student-name">${s}</div>
+              <div class="student-count">${db.photos.filter(p=>p.student===s&&p.course===c.course).length} photos</div>
+            </div>
+            <button class="icon-btn" onclick="removeStudent('${c.id}','${s.replace(/'/g,"\\'")}',event)">✕</button>
+          </div>`).join('') : '<div style="color:var(--mid);font-size:13px;padding:8px 0">No students yet</div>'}
+        <div class="class-actions">
+          <button class="btn btn-secondary" style="flex:1" onclick="openAddStudentToClass('${c.id}',event)">+ Student</button>
+          <button class="btn btn-secondary" style="flex:1" onclick="editClass('${c.id}',event)">Edit</button>
+          <button class="btn btn-danger" style="flex:1" onclick="deleteClass('${c.id}',event)">Delete</button>
+        </div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function toggleClass(id) {
+  const body = document.getElementById(id);
+  body.classList.toggle('open');
+}
+
+// ── STUDENT AUTOCOMPLETE ───────────────────────────────
+function updateStudentSuggestions() {
+  const dl = document.getElementById('student-suggestions');
+  const courseVal = document.getElementById('add-class').value;
+  const semVal = selectedSem;
+  const yearVal = document.getElementById('add-year').value;
+  let students = [];
+  db.classes.forEach(c => {
+    if ((!courseVal || c.course === courseVal) &&
+        (!semVal || c.semester === semVal) &&
+        (!yearVal || c.year == yearVal)) {
+      students = students.concat(c.students);
+    }
+  });
+  students = [...new Set(students)].sort();
+  dl.innerHTML = students.map(s => `<option value="${s}">`).join('');
+}
+
+// ── ADD PHOTO ──────────────────────────────────────────
+function openAddPhoto() {
+  currentPhotoData = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-picker').querySelector('.photo-picker-label').style.display = 'flex';
+  document.getElementById('add-student').value = '';
+  document.getElementById('add-class').value = '';
+  document.getElementById('add-project').value = '';
+  document.getElementById('add-notes').value = '';
+  document.querySelectorAll('.sem-chip').forEach(c => {
+    c.classList.toggle('selected', c.dataset.sem === 'Fall');
+  });
+  selectedSem = 'Fall';
+  updateStudentSuggestions();
+  openModal('modal-add-photo');
+}
+
+function selectSource(src) {
+  photoSource = src;
+  document.getElementById('src-camera').classList.toggle('selected', src === 'camera');
+  document.getElementById('src-gallery').classList.toggle('selected', src === 'gallery');
+  const inp = document.getElementById('photo-file-input');
+  if (src === 'camera') { inp.setAttribute('capture','environment'); }
+  else { inp.removeAttribute('capture'); }
+  const lbl = document.getElementById('photo-picker').querySelector('.photo-picker-label');
+  lbl.innerHTML = src === 'camera'
+    ? '<div class="photo-picker-icon">📷</div>Tap to take photo'
+    : '<div class="photo-picker-icon">🖼️</div>Tap to choose from gallery';
+}
+
+function triggerFilePick() {
+  document.getElementById('photo-file-input').click();
+}
+
+function handlePhotoSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    // Compress image
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = h * MAX / w; w = MAX; }
+      if (h > MAX) { w = w * MAX / h; h = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentPhotoData = canvas.toDataURL('image/jpeg', 0.80);
+      const preview = document.getElementById('photo-preview');
+      preview.src = currentPhotoData;
+      preview.style.display = 'block';
+      document.getElementById('photo-picker').querySelector('.photo-picker-label').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectSem(btn) {
+  document.querySelectorAll('[data-sem]').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedSem = btn.dataset.sem;
+  updateStudentSuggestions();
+}
+
+function savePhoto() {
+  const student = document.getElementById('add-student').value.trim();
+  const course  = document.getElementById('add-class').value;
+  const year    = document.getElementById('add-year').value;
+  const project = document.getElementById('add-project').value.trim();
+  const notes   = document.getElementById('add-notes').value.trim();
+
+  if (!student) { showToast('Enter a student name'); return; }
+  if (!course)  { showToast('Select a class'); return; }
+
+  const record = {
+    id: Date.now().toString(),
+    student, course, semester: selectedSem, year: parseInt(year),
+    project, notes,
+    photo: currentPhotoData || '',
+    created: new Date().toISOString()
+  };
+
+  db.photos.push(record);
+  saveDB();
+  closeModal('modal-add-photo');
+  renderPhotos();
+  buildPhotoFilters();
+  renderStats();
+  showToast('Photo record saved ✓');
+}
+
+// ── ADD CLASS ──────────────────────────────────────────
+function openAddClass() {
+  editingClassId = null;
+  document.getElementById('class-modal-title').textContent = 'Add Class';
+  document.getElementById('class-roster').value = '';
+  document.getElementById('class-section').value = '';
+  document.querySelectorAll('[data-csem]').forEach(c => c.classList.toggle('selected', c.dataset.csem === 'Fall'));
+  selectedCSem = 'Fall';
+  openModal('modal-add-class');
+}
+
+function editClass(id, e) {
+  e && e.stopPropagation();
+  const c = db.classes.find(x => x.id === id);
+  if (!c) return;
+  editingClassId = id;
+  document.getElementById('class-modal-title').textContent = 'Edit Class';
+  document.getElementById('class-course').value = c.course;
+  document.getElementById('class-year').value = c.year;
+  document.getElementById('class-section').value = c.section || '';
+  document.getElementById('class-roster').value = c.students.join('\n');
+  document.querySelectorAll('[data-csem]').forEach(x => x.classList.toggle('selected', x.dataset.csem === c.semester));
+  selectedCSem = c.semester;
+  openModal('modal-add-class');
+}
+
+function selectCSem(btn) {
+  document.querySelectorAll('[data-csem]').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedCSem = btn.dataset.csem;
+}
+
+function saveClass() {
+  const course   = document.getElementById('class-course').value;
+  const year     = document.getElementById('class-year').value;
+  const section  = document.getElementById('class-section').value.trim();
+  const rosterRaw= document.getElementById('class-roster').value;
+  const students = rosterRaw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+
+  if (editingClassId) {
+    const idx = db.classes.findIndex(c => c.id === editingClassId);
+    if (idx >= 0) {
+      db.classes[idx] = { ...db.classes[idx], course, semester: selectedCSem, year: parseInt(year), section, students };
+    }
+  } else {
+    db.classes.push({
+      id: Date.now().toString(),
+      course, semester: selectedCSem, year: parseInt(year), section, students
+    });
+  }
+  saveDB();
+  closeModal('modal-add-class');
+  renderClasses();
+  renderStats();
+  showToast(editingClassId ? 'Class updated ✓' : 'Class added ✓');
+}
+
+function deleteClass(id, e) {
+  e && e.stopPropagation();
+  if (!confirm('Delete this class? Student roster will be removed (photos kept).')) return;
+  db.classes = db.classes.filter(c => c.id !== id);
+  saveDB();
+  renderClasses();
+  showToast('Class removed');
+}
+
+function removeStudent(classId, studentName, e) {
+  e && e.stopPropagation();
+  const c = db.classes.find(x => x.id === classId);
+  if (!c) return;
+  c.students = c.students.filter(s => s !== studentName);
+  saveDB();
+  renderClasses();
+}
+
+function openAddStudentToClass(classId, e) {
+  e && e.stopPropagation();
+  const name = prompt('Enter student name:');
+  if (!name || !name.trim()) return;
+  const c = db.classes.find(x => x.id === classId);
+  if (!c) return;
+  if (!c.students.includes(name.trim())) {
+    c.students.push(name.trim());
+    c.students.sort();
+    saveDB();
+    renderClasses();
+    showToast('Student added ✓');
+  } else {
+    showToast('Student already in roster');
+  }
+}
+
+// ── PHOTO DETAIL ───────────────────────────────────────
+function openDetail(id) {
+  const p = db.photos.find(x => x.id === id);
+  if (!p) return;
+  currentDetailId = id;
+  document.getElementById('detail-img').src = p.photo || '';
+  document.getElementById('detail-img').style.display = p.photo ? 'block' : 'none';
+  document.getElementById('detail-name').textContent = p.student;
+  document.getElementById('detail-meta').textContent =
+    `${p.course} · ${p.semester} ${p.year}` + (p.project ? ` · ${p.project}` : '');
+  const tags = document.getElementById('detail-tags');
+  tags.innerHTML = [p.course, p.semester + ' ' + p.year, p.project].filter(Boolean)
+    .map(t => `<div class="detail-tag">${t}</div>`).join('');
+  const notes = document.getElementById('detail-notes');
+  if (p.notes) { notes.textContent = p.notes; notes.style.display = 'block'; }
+  else notes.style.display = 'none';
+  document.getElementById('detail-delete-btn').onclick = () => deletePhoto(id);
+  openModal('modal-detail');
+}
+
+function deletePhoto(id) {
+  if (!confirm('Delete this photo record? This cannot be undone.')) return;
+  db.photos = db.photos.filter(p => p.id !== id);
+  saveDB();
+  closeModal('modal-detail');
+  renderPhotos();
+  buildPhotoFilters();
+  renderStats();
+  showToast('Photo record deleted');
+}
+
+// ── SEARCH ─────────────────────────────────────────────
+function setSearchFilter(btn, filter) {
+  document.querySelectorAll('[data-sf]').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  searchFilter = filter;
+  runSearch();
+}
+
+function runSearch() {
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  const grid = document.getElementById('search-grid');
+  const label = document.getElementById('search-results-label');
+  grid.innerHTML = '';
+  if (!q && searchFilter === 'all') {
+    label.textContent = 'Enter a name or keyword to search';
+    return;
+  }
+  let results = db.photos.filter(p => {
+    const matchFilter = searchFilter === 'all' || p.course === searchFilter;
+    const matchQ = !q ||
+      p.student.toLowerCase().includes(q) ||
+      p.course.toLowerCase().includes(q) ||
+      p.semester.toLowerCase().includes(q) ||
+      String(p.year).includes(q) ||
+      (p.project || '').toLowerCase().includes(q) ||
+      (p.notes || '').toLowerCase().includes(q);
+    return matchFilter && matchQ;
+  }).reverse();
+  label.textContent = results.length
+    ? `${results.length} result${results.length !== 1 ? 's' : ''}`
+    : 'No results found';
+  results.forEach(p => grid.appendChild(makePhotoCard(p)));
+}
+
+// ── STATS ──────────────────────────────────────────────
+function renderStats() {
+  document.getElementById('stat-photos').textContent = db.photos.length;
+  document.getElementById('stat-students').textContent =
+    new Set(db.photos.map(p => p.student)).size;
+  document.getElementById('stat-classes').textContent = db.classes.length;
+  document.getElementById('stat-semesters').textContent =
+    new Set(db.photos.map(p => p.semester + p.year)).size;
+
+  const recent = document.getElementById('recent-list');
+  const latest = [...db.photos].reverse().slice(0, 5);
+  recent.innerHTML = latest.length
+    ? latest.map(p => `
+        <div class="student-row" onclick="openDetail('${p.id}')" style="cursor:pointer">
+          <div>
+            <div class="student-name">${p.student}</div>
+            <div class="student-count">${p.course} · ${p.semester} ${p.year}${p.project ? ' · ' + p.project : ''}</div>
+          </div>
+          <div style="font-size:11px;color:var(--mid)">${new Date(p.created).toLocaleDateString()}</div>
+        </div>`).join('')
+    : '<div style="color:var(--mid);font-size:14px;padding:8px 0">No records yet</div>';
+}
+
+// ── EXPORT / RESET ─────────────────────────────────────
+function exportData() {
+  const json = JSON.stringify(db, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'weld-records-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('Data exported ✓');
+}
+
+function confirmReset() {
+  if (!confirm('⚠️ Delete ALL records and classes? This cannot be undone.')) return;
+  if (!confirm('Are you sure? All photos and rosters will be permanently deleted.')) return;
+  db = { photos: [], classes: [] };
+  saveDB();
+  renderPhotos();
+  renderClasses();
+  renderStats();
+  buildPhotoFilters();
+  showToast('All data cleared');
+}
+
+// ── MODAL HELPERS ──────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => {
+    if (e.target === o) closeModal(o.id);
+  });
+});
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── WIRE UP ADD-CLASS CHANGE ───────────────────────────
+document.getElementById('add-class').addEventListener('change', updateStudentSuggestions);
+document.getElementById('add-year').addEventListener('change', updateStudentSuggestions);
+
+// ── UPDATE STUDENT SUGGESTIONS WHEN SWITCHING TABS ────
+document.addEventListener('DOMContentLoaded', () => {});
+</script>
+</body>
+</html>
